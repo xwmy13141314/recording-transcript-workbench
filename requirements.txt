@@ -1,0 +1,17 @@
+# 运行依赖（Python 3.13 验证通过）
+# 安装：python -m pip install -r requirements.txt
+sherpa-onnx==2.0.3
+numpy==2.5.5
+pywebview==6.2.1
+pythonnet==3.2.1
+Pillow==13.0.0
+
+# 仅打包 exe 时需要
+pyinstaller==6.22.3
+
+# 可选：生成测试音频（scripts/_make_test_audio.py）
+# pyttsx3
+
+# 另外需要系统里的 ffmpeg / ffprobe（不在 pip 里）：
+#   winget install Gyan.FFmpeg
+#   或从 https://ffmpeg.org/download.html 下载后把 bin 加入 PATH

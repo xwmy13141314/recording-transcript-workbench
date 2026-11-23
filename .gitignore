@@ -1,0 +1,30 @@
+# 本机环境与缓存
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 体积大、需自行下载或克隆
+模型/
+reference/
+
+# 个人数据：真实会议、录音、设置（含 API Key）、界面生成物
+会议记录/
+我的录音/
+*.lock
+
+# 打包产物
+dist/
+build/
+*.spec
+*.exe
+
+# 编辑器与系统文件
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本地助手工作区（不属于项目内容）
+.workbuddy-ai/

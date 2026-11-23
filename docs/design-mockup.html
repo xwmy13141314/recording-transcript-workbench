@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>录音转写工作台 · 新版界面效果图</title>
+<style>
+  :root {
+    --bg:#eeeff2; --panel:#ffffff; --panel2:#f7f7f9; --text:#1d1d1f; --muted:#86868b;
+    --border:#e5e5ea; --accent:#0071e3; --accent-soft:#e8f1ff; --hover:#f0f0f5; --mark:#fff1b8;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  body { margin:0; font-family:var(--font); background:var(--bg); color:var(--text); padding:18px; }
+  .page-head { max-width:1280px; margin:0 auto 14px; }
+  .page-head h1 { font-size:17px; font-weight:600; margin:0 0 4px; }
+  .page-head p { font-size:12px; color:var(--muted); margin:0; }
+  .scene-tabs { display:flex; gap:8px; max-width:1280px; margin:14px auto; flex-wrap:wrap; }
+  .scene-tabs button { border:1px solid var(--border); background:#fff; border-radius:8px; padding:7px 14px; cursor:pointer; font-size:13px; color:var(--text); }
+  .scene-tabs button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .scene { display:none; max-width:1280px; margin:0 auto; }
+  .scene.on { display:block; }
+  .scene-note { background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:12px; color:#555; margin-bottom:12px; }
+  .scene-note b { color:var(--text); }
+  .tag-new { display:inline-block; background:#fff1b8; color:#7a5b00; font-size:10px; padding:1px 6px; border-radius:8px; margin-left:6px; vertical-align:middle; }
+  .win { background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.06); }
+  .win.dark { --panel:#232325; --panel2:#1c1c1e; --text:#f5f5f7; --muted:#a1a1a6; --border:#3a3a3c; --accent:#0a84ff; --accent-soft:#132a45; --hover:#2c2c2e; --mark:#5a4a12; background:var(--panel); }
+  .titlebar { height:34px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 12px; gap:6px; background:var(--panel); }
+  .dot { width:9px; height:9px; border-radius:50%; }
+  .dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+  .titlebar .name { margin-left:10px; font-size:12px; font-weight:500; }
+  .toolbar { height:38px; display:flex; align-items:center; gap:8px; padding:0 12px; border-bottom:1px solid var(--border); background:var(--panel); }
+  .toolbar .brand { font-weight:600; font-size:13px; margin-right:auto; }
+  .btn { border:1px solid var(--border); background:var(--panel); color:var(--text); border-radius:6px; padding:4px 10px; font-size:11px; cursor:default; }
+  .btn.pri { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .cols { display:grid; grid-template-columns:220px minmax(0,1fr) 210px; height:470px; }
+  .col { min-width:0; overflow:hidden; }
+  .left { background:var(--panel2); border-right:1px solid var(--border); padding:12px; display:flex; flex-direction:column; }
+  .leftgear { margin-top:auto; border:1px solid var(--border); border-radius:7px; padding:7px 10px; font-size:12px; color:var(--text); background:var(--panel); text-align:center; }
+  .center { padding:14px 18px; }
+  .right { background:var(--panel2); border-left:1px solid var(--border); padding:12px; }
+  .searchbox { border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12px; color:var(--muted); background:var(--panel); }
+  .filterrow { display:flex; gap:6px; margin:10px 0 12px; }
+  .filterrow span { font-size:11px; padding:4px 10px; border-radius:12px; color:var(--muted); }
+  .filterrow span.on { background:var(--accent-soft); color:var(--accent); }
+  .grp { font-size:11px; color:var(--muted); margin:14px 0 6px; }
+  .mi { font-size:12px; padding:7px 9px; border-radius:7px; margin-bottom:3px; display:flex; justify-content:space-between; }
+  .mi.on { background:var(--accent-soft); }
+  .mi .sub { font-size:10px; color:var(--muted); }
+  .wb { border:1px solid var(--accent); background:var(--accent-soft); border-radius:10px; padding:11px 13px; margin-bottom:14px; }
+  .wb h4 { margin:0; font-size:13px; color:var(--accent); font-weight:600; display:flex; align-items:center; justify-content:space-between; }
+  .wb .row { font-size:11px; color:var(--text); margin-top:7px; display:flex; justify-content:space-between; }
+  .wb .meta { font-size:10px; color:var(--muted); margin-top:8px; }
+  .h1 { font-size:19px; font-weight:600; margin:0 0 4px; }
+  .meta-line { font-size:11px; color:var(--muted); }
+  .tabs { display:flex; gap:18px; border-bottom:1px solid var(--border); margin:12px 0; padding-bottom:7px; }
+  .tabs span { font-size:12px; color:var(--muted); }
+  .tabs span.on { color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:6px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:9px; padding:11px 13px; margin-bottom:10px; }
+  .card h5 { margin:0 0 7px; font-size:12px; font-weight:600; }
+  .pt { font-size:12px; margin:5px 0; line-height:1.5; }
+  .pt .ts { color:var(--accent); font-family:ui-monospace,Consolas,monospace; font-size:10px; margin-right:6px; }
+  mark { background:var(--mark); padding:0 2px; border-radius:2px; }
+  .st { font-size:11px; color:var(--muted); }
+  .kv { display:flex; justify-content:space-between; font-size:11px; padding:5px 0; border-bottom:1px solid var(--border); }
+  .kv span:first-child { color:var(--muted); }
+  .tl { font-size:11px; margin-top:6px; }
+  .tl div { padding:4px 0; color:var(--text); }
+  .tl .ts { color:var(--accent); font-family:ui-monospace,Consolas,monospace; font-size:10px; margin-right:5px; }
+  .statusbar { height:26px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-size:10px; color:var(--muted); background:var(--panel); }
+  .gear { border:1px solid var(--border); border-radius:5px; padding:2px 9px; color:var(--text); background:var(--panel); }
+  .modal-wrap { position:relative; height:470px; background:rgba(0,0,0,.12); display:flex; align-items:center; justify-content:center; }
+  .modal { width:520px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px 20px; box-shadow:0 8px 30px rgba(0,0,0,.12); }
+  .modal h3 { margin:0 0 14px; font-size:15px; font-weight:600; }
+  .mtabs { display:flex; gap:6px; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:16px; }
+  .mtabs span { font-size:12px; padding:5px 11px; border-radius:6px; color:var(--muted); }
+  .mtabs span.on { background:var(--accent-soft); color:var(--accent); }
+  .field { margin-bottom:15px; }
+  .field label { display:block; font-size:11px; color:var(--muted); margin-bottom:6px; }
+  .field .val { display:flex; gap:6px; }
+  .field .val span:first-child { flex:1; border:1px solid var(--border); border-radius:6px; padding:7px 9px; font-family:ui-monospace,Consolas,monospace; font-size:11px; overflow:hidden; white-space:nowrap; }
+  .switchrow { display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .sw { width:30px; height:17px; border-radius:9px; background:var(--accent); position:relative; }
+  .sw i { position:absolute; right:2px; top:2px; width:13px; height:13px; border-radius:50%; background:#fff; }
+  .modal-foot { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+  .res-hit { background:var(--accent-soft); border-left:2px solid var(--accent); padding:6px 9px; margin:5px 0; font-size:12px; }
+  .res-src { font-size:10px; color:var(--muted); margin-top:3px; }
+  .prog { height:6px; background:var(--hover); border-radius:3px; overflow:hidden; margin-top:8px; }
+  .prog i { display:block; height:100%; width:62%; background:var(--accent); }
+</style>
+</head>
+<body>
+<div class="page-head">
+  <h1>录音转写工作台 · 新版界面效果图</h1>
+  <p>按确认的方案绘制。点上方切换场景，标注「新增」的是这次改动的点。此图仅供确认，尚未写入应用。</p>
+</div>
+<div class="scene-tabs" id="tabs">
+  <button class="on" data-s="s1">1 · 工作台 + 新录音</button>
+  <button data-s="s2">2 · 设置面板</button>
+  <button data-s="s3">3 · 全局搜索</button>
+  <button data-s="s4">4 · 暗色模式</button>
+  <button data-s="s5">5 · 处理进度</button>
+  <button data-s="s6">6 · 外观设置 <span class="tag-new">调整</span></button>
+</div>
+
+<div class="scene on" id="s1">
+  <div class="scene-note"><b>场景 1</b>：「设置」按钮移到左栏底部（红框标注处，macOS 侧边栏风格）；中栏顶部新增「工作台」自动扫描区；左侧会议按日期分组。点「全部处理」会调用本机转写。</div>
+  <div class="win">
+    <div class="titlebar"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i><span class="name">录音转写工作台</span></div>
+    <div class="toolbar"><span class="brand">录音转写工作台</span><span class="btn">↻ 刷新</span></div>
+    <div class="cols">
+      <div class="col left">
+        <div class="searchbox">搜索会议、逐字稿、总结… <span class="tag-new">新增</span></div>
+        <div class="filterrow"><span class="on">全部会议</span><span>星标</span></div>
+        <div class="grp">今天 <span class="tag-new">新增</span></div>
+        <div class="mi on"><span>测试会议</span><span class="sub">13:56</span></div>
+        <div class="mi"><span>产品周会</span><span class="sub">10:00</span></div>
+        <div class="grp">昨天</div>
+        <div class="mi"><span>客户沟通</span><span class="sub">15:30</span></div>
+        <div class="grp">更早</div>
+        <div class="mi"><span>预算评审</span><span class="sub">11-17</span></div>
+        <div class="leftgear">⚙ 设置 <span class="tag-new">位置调整</span></div>
+      </div>
+      <div class="col center">
+        <div class="wb"><h4><span>工作台 · 发现 3 个新录音 <span class="tag-new">新增</span></span><span class="btn pri">全部处理</span></h4>
+          <div class="row"><span>会议记录_1123.m4a</span><span>4.2 MB · 待处理</span></div>
+          <div class="row"><span>周会录音_1122.m4a</span><span>18.7 MB · 待处理</span></div>
+          <div class="row"><span>访谈_1121.wav</span><span>32.1 MB · 待处理</span></div>
+          <div class="meta">来源 E:\录音\会议 · 上次扫描 16:02 · 每 5 分钟自动扫描</div>
+        </div>
+        <div class="h1">测试会议</div>
+        <div class="meta-line">2026-11-23 13:56 · 00:00:22 · 本机转写</div>
+        <div class="tabs"><span class="on">会议总结</span><span>逐字稿</span><span>原音</span></div>
+        <div class="card"><h5>关键要点</h5>
+          <div class="pt"><span class="ts">00:00:00</span>讨论下个季度的预算</div>
+          <div class="pt"><span class="ts">00:00:04</span>张三说，市场推广需要 20 万元</div>
+          <div class="pt"><span class="ts">00:00:13</span>决定本周五之前提交方案</div>
+        </div>
+      </div>
+      <div class="col right">
+        <div class="st">会议信息</div>
+        <div class="kv"><span>日期</span><span>11-23</span></div>
+        <div class="kv"><span>时长</span><span>22 秒</span></div>
+        <div class="kv"><span>来源</span><span>本机</span></div>
+        <div class="st" style="margin-top:14px">时间轴</div>
+        <div class="tl"><div><span class="ts">00:00:00</span>讨论预算</div><div><span class="ts">00:00:04</span>张三 20 万元</div><div><span class="ts">00:00:09</span>先确定合同</div></div>
+      </div>
+    </div>
+    <div class="statusbar"><span>本机运行 · 未联网 · 共 1 场会议</span></div>
+  </div>
+</div>
+
+<div class="scene" id="s2">
+  <div class="scene-note"><b>场景 2</b>：点左栏底部「设置」后弹出。四个标签页；「录音目录」页可改路径、选目录、打开目录，并配置自动扫描。暗色/字号移到「外观」页。</div>
+  <div class="win">
+    <div class="titlebar"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i><span class="name">录音转写工作台 — 设置</span></div>
+    <div class="modal-wrap">
+      <div class="modal">
+        <h3>设置</h3>
+        <div class="mtabs"><span>通用</span><span class="on">录音目录</span><span>转写</span><span>外观</span></div>
+        <div class="field"><label>录音存放目录 <span class="tag-new">新增</span></label>
+          <div class="val"><span>E:\录音\会议</span><span class="btn">选择…</span><span class="btn">打开</span></div>
+        </div>
+        <div class="st">应用会扫描此目录里的新录音，显示在首页工作台</div>
+        <div style="margin-top:16px">
+          <div class="switchrow"><span>自动扫描新录音 <span class="tag-new">新增</span></span><span class="sw"><i></i></span></div>
+          <div class="switchrow"><span>扫描间隔</span><span class="btn">每 5 分钟</span></div>
+          <div class="switchrow"><span>发现新录音后</span><span class="btn">提示我，手动处理</span></div>
+          <div class="switchrow"><span>扫描子文件夹</span><span class="btn">是</span></div>
+        </div>
+        <div class="modal-foot"><span class="btn">取消</span><span class="btn pri">保存</span></div>
+      </div>
+    </div>
+    <div class="statusbar"><span>本机运行 · 未联网</span></div>
+  </div>
+</div>
+
+<div class="scene" id="s3">
+  <div class="scene-note"><b>场景 3</b>：搜索升级为全局。输入关键词后左侧实时过滤，中栏直接显示命中的原话并高亮，点结果跳到对应句子和原音位置。</div>
+  <div class="win">
+    <div class="titlebar"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i><span class="name">录音转写工作台 — 搜索</span></div>
+    <div class="toolbar"><span class="brand">录音转写工作台</span><span class="btn">↻ 刷新</span></div>
+    <div class="cols">
+      <div class="col left">
+        <div class="searchbox" style="border-color:var(--accent)">预算 <span class="tag-new">新增</span></div>
+        <div class="filterrow"><span class="on">全部会议</span><span>星标</span></div>
+        <div class="grp">命中 2 场</div>
+        <div class="mi on"><span>测试会议</span><span class="sub">2 处</span></div>
+        <div class="mi"><span>预算评审</span><span class="sub">1 处</span></div>
+        <div class="leftgear">⚙ 设置</div>
+      </div>
+      <div class="col center">
+        <div class="h1">搜索「预算」 <span class="tag-new">新增</span></div>
+        <div class="meta-line">在逐字稿与总结中找到 3 处命中，点任意一条跳转</div>
+        <div class="tabs"><span class="on">命中结果</span><span>会议总结</span><span>逐字稿</span></div>
+        <div class="res-hit"><mark>预算</mark><div class="res-src">测试会议 · 逐字稿 · 00:00:00</div></div>
+        <div class="res-hit">张三说，市场推广需要 20 万元，这是本季度<mark>预算</mark>的一部分<div class="res-src">测试会议 · 总结 · 00:00:04</div></div>
+        <div class="res-hit">下一年<mark>预算</mark>评审安排<div class="res-src">预算评审 · 逐字稿 · 00:12:31</div></div>
+      </div>
+      <div class="col right">
+        <div class="st">搜索范围 <span class="tag-new">新增</span></div>
+        <div class="kv"><span>标题</span><span>✓</span></div>
+        <div class="kv"><span>逐字稿</span><span>✓</span></div>
+        <div class="kv"><span>总结</span><span>✓</span></div>
+        <div class="st" style="margin-top:14px">提示</div>
+        <div class="pt" style="font-size:11px;color:var(--muted)">搜索在本地文件里进行，不联网。点命中项会跳到原音对应秒数。</div>
+      </div>
+    </div>
+    <div class="statusbar"><span>本机运行 · 未联网 · 3 处命中</span></div>
+  </div>
+</div>
+
+<div class="scene" id="s4">
+  <div class="scene-note"><b>场景 4</b>：暗色模式。主题已移入「设置 → 外观」页，顶栏不再放主题和字号按钮。偏好保存在本机，重启后保留。</div>
+  <div class="win dark">
+    <div class="titlebar"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i><span class="name">录音转写工作台</span></div>
+    <div class="toolbar"><span class="brand">录音转写工作台</span><span class="btn">↻ 刷新</span></div>
+    <div class="cols">
+      <div class="col left">
+        <div class="searchbox">搜索会议、逐字稿、总结…</div>
+        <div class="filterrow"><span class="on">全部会议</span><span>星标</span></div>
+        <div class="grp">今天</div>
+        <div class="mi on"><span>测试会议</span><span class="sub">13:56</span></div>
+        <div class="mi"><span>产品周会</span><span class="sub">10:00</span></div>
+        <div class="grp">昨天</div>
+        <div class="mi"><span>客户沟通</span><span class="sub">15:30</span></div>
+        <div class="leftgear">⚙ 设置</div>
+      </div>
+      <div class="col center">
+        <div class="wb"><h4><span>工作台 · 发现 3 个新录音</span><span class="btn pri">全部处理</span></h4>
+          <div class="row"><span>会议记录_1123.m4a</span><span>4.2 MB · 待处理</span></div>
+          <div class="meta">来源 E:\录音\会议 · 上次扫描 16:02</div>
+        </div>
+        <div class="h1">测试会议</div>
+        <div class="meta-line">2026-11-23 13:56 · 00:00:22</div>
+        <div class="tabs"><span class="on">会议总结</span><span>逐字稿</span><span>原音</span></div>
+        <div class="card"><h5>关键要点</h5>
+          <div class="pt"><span class="ts">00:00:00</span>讨论下个季度的预算</div>
+          <div class="pt"><span class="ts">00:00:04</span>张三说，市场推广需要 20 万元</div>
+        </div>
+      </div>
+      <div class="col right">
+        <div class="st">会议信息</div>
+        <div class="kv"><span>日期</span><span>11-23</span></div>
+        <div class="kv"><span>时长</span><span>22 秒</span></div>
+        <div class="st" style="margin-top:14px">时间轴</div>
+        <div class="tl"><div><span class="ts">00:00:00</span>讨论预算</div><div><span class="ts">00:00:04</span>张三 20 万元</div></div>
+      </div>
+    </div>
+    <div class="statusbar"><span>本机运行 · 未联网 · 暗色模式</span></div>
+  </div>
+</div>
+
+<div class="scene" id="s5">
+  <div class="scene-note"><b>场景 5</b>：点「全部处理」后的进度反馈。逐个转写新录音，显示当前文件和进度，全程本机，完成后自动刷新会议列表。</div>
+  <div class="win">
+    <div class="titlebar"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i><span class="name">录音转写工作台 — 处理中</span></div>
+    <div class="toolbar"><span class="brand">录音转写工作台</span><span class="btn">↻ 刷新</span></div>
+    <div class="cols">
+      <div class="col left">
+        <div class="searchbox">搜索会议、逐字稿、总结…</div>
+        <div class="filterrow"><span class="on">全部会议</span><span>星标</span></div>
+        <div class="grp">今天</div>
+        <div class="mi"><span>测试会议</span><span class="sub">13:56</span></div>
+        <div class="leftgear">⚙ 设置</div>
+      </div>
+      <div class="col center">
+        <div class="h1">正在处理新录音 <span class="tag-new">新增</span></div>
+        <div class="meta-line">本机转写中，音频不会上传</div>
+        <div class="card"><h5>会议记录_1123.m4a · 1 / 3</h5>
+          <div class="st">SenseVoice 转写中… 已完成 62%</div>
+          <div class="prog"><i></i></div>
+        </div>
+        <div class="card"><h5>待处理</h5>
+          <div class="pt">周会录音_1122.m4a</div>
+          <div class="pt">访谈_1121.wav</div>
+        </div>
+      </div>
+      <div class="col right">
+        <div class="st">处理说明</div>
+        <div class="pt" style="font-size:11px;color:var(--muted)">转写、总结、归档全部在本机完成。完成后新会议会出现在左侧列表，工作台自动更新。</div>
+      </div>
+    </div>
+    <div class="statusbar"><span>本机运行 · 未联网 · 处理中</span></div>
+  </div>
+</div>
+
+<div class="scene" id="s6">
+  <div class="scene-note"><b>场景 6</b>：按你的要求，暗色/亮色和字体大小从顶栏移除，统一放进「设置 → 外观」页。顶栏现在只剩「刷新」，更干净。</div>
+  <div class="win">
+    <div class="titlebar"><i class="dot r"></i><i class="dot y"></i><i class="dot g"></i><span class="name">录音转写工作台 — 设置 · 外观</span></div>
+    <div class="toolbar"><span class="brand">录音转写工作台</span><span class="btn">↻ 刷新</span></div>
+    <div class="modal-wrap">
+      <div class="modal">
+        <h3>设置</h3>
+        <div class="mtabs"><span>通用</span><span>录音目录</span><span>转写</span><span class="on">外观</span></div>
+        <div class="field"><label>外观主题 <span class="tag-new">从顶栏移入</span></label>
+          <div class="val">
+            <span class="btn pri" style="text-align:center">亮色</span>
+            <span class="btn" style="text-align:center">暗色</span>
+            <span class="btn" style="text-align:center">跟随系统</span>
+          </div>
+        </div>
+        <div class="field"><label>字体大小 <span class="tag-new">从顶栏移入</span></label>
+          <div style="display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted)">
+            <span class="btn">A−</span>
+            <div style="flex:1;height:5px;background:var(--hover);border-radius:3px;position:relative"><i style="position:absolute;left:55%;top:-4px;width:13px;height:13px;border-radius:50%;background:var(--accent)"></i></div>
+            <span class="btn">A+</span>
+            <span style="min-width:36px;text-align:right;color:var(--text)">100%</span>
+          </div>
+        </div>
+        <div class="st">预览：正文会按所选字号显示，设置保存后对整个应用生效。</div>
+        <div class="modal-foot"><span class="btn">取消</span><span class="btn pri">保存</span></div>
+      </div>
+    </div>
+    <div class="statusbar"><span>本机运行 · 未联网</span></div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('#tabs button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    document.querySelectorAll('.scene').forEach(s=>s.classList.remove('on'));
+    document.getElementById(b.dataset.s).classList.add('on');
+  };
+});
+</script>
+</body>
+</html>

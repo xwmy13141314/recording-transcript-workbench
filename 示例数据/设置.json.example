@@ -1,0 +1,14 @@
+{
+  "record_dir": "",
+  "auto_scan": true,
+  "scan_interval": 5,
+  "on_new": "prompt",
+  "scan_subdirs": true,
+  "theme": "light",
+  "font_scale": 1.0,
+  "cloud_enabled": false,
+  "cloud_provider": "siliconflow",
+  "cloud_api_key": "",
+  "cloud_model": "Qwen/Qwen2.5-7B-Instruct",
+  "cloud_base": "https://api.siliconflow.cn/v1"
+}
