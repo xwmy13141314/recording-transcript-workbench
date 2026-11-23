@@ -100,6 +100,7 @@ def save_settings(cfg: dict) -> dict:
         incoming["cloud_api_key"] = current.get("cloud_api_key", "")
     incoming.pop("cloud_key_set", None)
     merged = dict(DEFAULTS)
+    merged.update(current)          # 保留未提交的字段，避免部分保存把设置清空
     merged.update(incoming)
     tmp = SETTINGS.with_suffix(".tmp")
     tmp.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
