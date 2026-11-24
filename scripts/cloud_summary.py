@@ -72,7 +72,7 @@ REDUCE_SYSTEM = """你是一名资深会议纪要撰写人。你会收到一份�
 {
   "title": "一句话会议标题（15 字以内）",
   "recording_info": {
-    "duration": "会议时长，如：约 1 小时 17 分钟（材料没给就填空）",
+    "duration": "会议时长：必须原样照抄下方提供的「会议时长（秒）」换算结果，禁止自行推断或编造",
     "participants": "参与人数，如：约 5 人（材料没给就填空）",
     "type": "内容类型，如：工作会议（产品复盘与规划）"
   },
@@ -101,6 +101,10 @@ REDUCE_PROMPT = """会议名称：{title}
 会议时长（秒）：{duration}
 分段要点提取结果（共 {n} 段）：
 {material}
+
+重要：「会议时长（秒）」是本机从音频文件精确检测到的真实时长，必须换算后原样填入
+recording_info.duration（例如 6877 秒 = 约 1 小时 55 分钟）。禁止根据逐字稿内容自行推断时长，
+禁止写死"约 1 小时 17 分钟"等与提供数值不符的结果。
 
 请按上述要求整合成 2000-4000 字的完整会议纪要 JSON。"""
 
@@ -233,13 +237,20 @@ def summarize_remote(segments: list[dict], title: str = "", duration: float = 0,
     for k in ("highlights", "decisions", "actions", "numbers", "open_questions", "speakers"):
         obj[k] = _list(obj.get(k))
 
-    # 录音信息：模型没给全时用本机元数据补齐，不编造
+    # 录音信息：时长以本机音频检测值为准，**强制覆盖**模型输出。
+    # 模型从文本推断时长不可靠（7B 模型常写死"约 1 小时 17 分钟"），
+    # 本机 duration 来自 ffprobe/解码器，是权威值。
     info = obj.get("recording_info")
     info = info if isinstance(info, dict) else {}
-    if duration and not str(info.get("duration") or "").strip():
+    if duration:
         d = int(duration)
-        h, m = d // 3600, d % 3600 // 60
-        info["duration"] = (f"约 {h} 小时 {m} 分钟" if h else f"约 {m} 分钟")
+        h, m, s = d // 3600, d % 3600 // 60, d % 60
+        info["duration"] = (
+            f"{h} 小时 {m} 分 {s} 秒（{_fmt(d)}）" if h
+            else f"{m} 分 {s} 秒（{_fmt(d)}）"
+        )
+    else:
+        info["duration"] = ""
     info.setdefault("participants", "")
     info.setdefault("type", "")
     obj["recording_info"] = info
