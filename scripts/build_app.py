@@ -115,6 +115,11 @@ APP_TEMPLATE = r"""<!DOCTYPE html>
   .modal-foot { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.2rem; }
   .prog { height:0.4rem; background:var(--hover); border-radius:0.2rem; overflow:hidden; margin-top:0.5rem; }
   .prog i { display:block; height:100%; background:var(--accent); }
+  .export-wrap { position:relative; margin-left:auto; }
+  .export-menu { position:absolute; right:0; top:1.9rem; z-index:15; background:var(--panel); border:1px solid var(--border); border-radius:0.5rem; box-shadow:0 6px 24px rgba(0,0,0,.14); padding:0.3rem; min-width:11rem; display:none; }
+  .export-menu.on { display:block; }
+  .export-menu div { padding:0.45rem 0.7rem; font-size:0.82rem; border-radius:0.35rem; cursor:pointer; white-space:nowrap; }
+  .export-menu div:hover { background:var(--hover); }
   body.dark {
     --bg:#161617; --panel:#242426; --panel2:#1d1d1f; --left-bg:#1d1d1f;
     --text:#f5f5f7; --muted:#a1a1a6; --border:#3a3a3c; --accent:#0a84ff;
@@ -273,7 +278,13 @@ function renderCenter(){
   $('center').innerHTML = `${wb}
     <div class="h1">${esc(m.title)}</div>
     <div class="meta-line">${esc(m.date)} ${esc(m.time||'')} · ${fmt(m.duration)} · 本机转写</div>
-    <div class="tabs" id="tabs"><span class="on" data-tab="summary">会议总结</span><span data-tab="transcript">逐字稿</span><span data-tab="audio">原音</span></div>
+    <div class="tabs" id="tabs"><span class="on" data-tab="summary">会议总结</span><span data-tab="transcript">逐字稿</span><span data-tab="audio">原音</span>
+      <span class="export-wrap"><button class="btn" id="exportBtn">导出 ▾</button><div class="export-menu" id="exportMenu">
+        <div data-kind="summary">⬇ 下载会议总结 (.md)</div>
+        <div data-kind="transcript">⬇ 下载逐字稿 (.md)</div>
+        <div data-kind="audio">⬇ 下载原音</div>
+        <div data-kind="all">📦 打包下载全部 (.zip)</div>
+      </div></span></div>
     <section class="tabpane on" data-pane="summary">
       <div class="sumbar"><span class="st">${m.cloud_summary?'🤖 云端改写':'📄 本机规则摘要'}</span><button class="btn" id="cloudBtn">${settings.cloud_enabled?'云端重写总结':'开启云端总结'}</button></div>
       ${m.summary_content ? renderSummaryMd(m) : `<div class="card"><h5>一句话摘要</h5><div class="pt">${marked(lead,terms)}</div></div>
@@ -286,13 +297,14 @@ function renderCenter(){
       <div class="player"><audio id="player" controls preload="none"></audio></div>
       <div class="card"><h5>时间轴</h5>${timelineHtml(segs)}</div>
     </section>`;
-  document.querySelectorAll('#tabs span').forEach(sp=>sp.onclick=()=>{
-    document.querySelectorAll('#tabs span').forEach(x=>x.classList.toggle('on',x===sp));
+  document.querySelectorAll('#tabs span[data-tab]').forEach(sp=>sp.onclick=()=>{
+    document.querySelectorAll('#tabs span[data-tab]').forEach(x=>x.classList.toggle('on',x===sp));
     document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('on',p.dataset.pane===sp.dataset.tab));
     if(sp.dataset.tab==='audio') setTimeout(setAudio,0);
   });
   bindTimeline(); bindWorkbench(); setAudio();
   const cb=$('cloudBtn'); if(cb) cb.onclick=onCloudSummarize;
+  bindExport();
   document.querySelectorAll('.speaker').forEach(sp=>sp.onclick=()=>{
     const i=Number(sp.dataset.i), old=current.segments[i]?.speaker||'';
     const v=prompt('这段说话人（留空清除）：', old);
@@ -302,6 +314,31 @@ function renderCenter(){
       if(r){ const o=typeof r==='string'?JSON.parse(r):r; if(o.ok){ current.segments[i].speaker=v.trim(); renderCenter(); } else alert(o.error||'保存失败'); }
     });
   });
+}
+
+function bindExport(){
+  const btn=$('exportBtn'), menu=$('exportMenu');
+  if(!btn||!menu) return;
+  btn.onclick=e=>{ e.stopPropagation(); menu.classList.toggle('on'); };
+  if(!window.__exportOutsideBound){
+    window.__exportOutsideBound=true;
+    document.addEventListener('click', e=>{
+      const m=$('exportMenu'); if(m && !e.target.closest('.export-wrap')) m.classList.remove('on');
+    });
+  }
+  menu.querySelectorAll('div[data-kind]').forEach(it=>it.onclick=async e=>{
+    e.stopPropagation();
+    menu.classList.remove('on');
+    await doExport(it.dataset.kind);
+  });
+}
+async function doExport(kind){
+  if(!current) return;
+  const r=await api('export_meeting', current.id, kind);
+  if(!r){ alert('导出失败：未连接到本机服务'); return; }
+  const o=typeof r==='string'?JSON.parse(r):r;
+  if(o.ok) alert('已保存到：\n'+o.path);
+  else if(!o.cancelled) alert('导出失败：'+(o.error||'未知错误'));
 }
 
 async function onCloudSummarize(){
@@ -342,7 +379,7 @@ function audioSrc(m){
 function setAudio(){ const a=$('player'); if(a&&current) a.src=audioSrc(current); }
 function jump(i){
   if(!current) return;
-  document.querySelectorAll('#tabs span').forEach(x=>x.classList.toggle('on',x.dataset.tab==='audio'));
+  document.querySelectorAll('#tabs span[data-tab]').forEach(x=>x.classList.toggle('on',x.dataset.tab==='audio'));
   document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('on',p.dataset.pane==='audio'));
   document.querySelectorAll('.tlrow,.segline').forEach(el=>el.classList.toggle('hit',Number(el.dataset.i)===i));
   setTimeout(()=>{ const a=$('player'); if(a){ a.currentTime=Number((current.segments[i]||{}).start)||0; a.play().catch(()=>{}); } setAudio(); },0);

@@ -91,9 +91,15 @@ class Api:
             m = next((x for x in idx.get("meetings", []) if x.get("id") == meeting_id), None)
             if not m:
                 raise RuntimeError("找不到会议")
-            with CLOUD_LOCK:
-                CLOUD_STATE["message"] = "云端总结中（仅文字）…"
-            obj = summarize_remote(m.get("segments", []))
+            def _report(done, total, message):
+                with CLOUD_LOCK:
+                    CLOUD_STATE.update(done=done, total=total, message=message)
+
+            _report(0, 1, "云端总结中（仅文字）…")
+            obj = summarize_remote(
+                m.get("segments", []), title=m.get("title", ""),
+                duration=m.get("duration", 0), progress=_report,
+            )
             md = to_markdown(obj, m.get("title", ""), m.get("segments", []))
             spath = DATA / m.get("summary", "")
             spath.parent.mkdir(parents=True, exist_ok=True)
@@ -252,6 +258,73 @@ class Api:
             return "ok"
         except Exception as exc:  # noqa: BLE001
             return str(exc)
+
+    def export_meeting(self, meeting_id: str, kind: str = "summary") -> str:
+        """导出会议资料到本机指定位置。
+
+        kind: summary(总结.md) / transcript(逐字稿.md) / audio(原音) / all(zip 打包)。
+        使用系统「另存为」对话框，用户选路径后复制；取消返回空。
+        """
+        import shutil
+        import zipfile
+        from config import INDEX
+
+        def _safe(name: str) -> str:
+            s = "".join(c if c not in '<>:"/\\|?*' else "_" for c in str(name or ""))
+            return s.strip() or "会议"
+
+        try:
+            idx = json.loads(INDEX.read_text(encoding="utf-8")) if INDEX.exists() else {"meetings": []}
+            m = next((x for x in idx.get("meetings", []) if x.get("id") == meeting_id), None)
+            if not m:
+                return json.dumps({"ok": False, "error": "找不到会议"}, ensure_ascii=False)
+
+            base = _safe(m.get("title") or m.get("date") or "会议")
+            summary_p = DATA / m.get("summary", "")
+            transcript_p = DATA / m.get("transcript", "")
+            audio_p = DATA / m.get("audio", "")
+
+            if kind == "summary":
+                src, default, ftypes = summary_p, base + "_总结.md", ["Markdown 文件 (*.md)", "所有文件 (*.*)"]
+            elif kind == "transcript":
+                src, default, ftypes = transcript_p, base + "_逐字稿.md", ["Markdown 文件 (*.md)", "所有文件 (*.*)"]
+            elif kind == "audio":
+                src, default, ftypes = audio_p, audio_p.name or (base + audio_p.suffix), ["音频文件 (*.m4a *.mp3 *.wav *.flac)", "所有文件 (*.*)"]
+            elif kind == "all":
+                src, default, ftypes = None, base + "_资料包.zip", ["ZIP 压缩包 (*.zip)", "所有文件 (*.*)"]
+            else:
+                return json.dumps({"ok": False, "error": "未知的导出类型"}, ensure_ascii=False)
+
+            if kind != "all" and not src.exists():
+                return json.dumps({"ok": False, "error": "源文件不存在"}, ensure_ascii=False)
+            if kind == "all" and not any(p.exists() for p in (summary_p, transcript_p, audio_p)):
+                return json.dumps({"ok": False, "error": "没有可导出的资料"}, ensure_ascii=False)
+
+            if not WINDOW:
+                return json.dumps({"ok": False, "error": "窗口未就绪"}, ensure_ascii=False)
+            result = WINDOW.create_file_dialog(
+                webview.SAVE_DIALOG, save_filename=default, file_types=tuple(ftypes)
+            )
+            if not result:
+                return json.dumps({"ok": False, "cancelled": True}, ensure_ascii=False)
+            target = Path(result[0] if isinstance(result, (list, tuple)) else result)
+            target.parent.mkdir(parents=True, exist_ok=True)
+
+            if kind == "all":
+                if target.suffix.lower() != ".zip":
+                    target = target.with_suffix(".zip")
+                with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for p, label in ((summary_p, "会议总结.md"), (transcript_p, "逐字稿.md"), (audio_p, "")):
+                        if p.exists():
+                            zf.write(p, label or p.name)
+            else:
+                shutil.copy2(str(src), str(target))
+
+            log(f"导出成功: {kind} -> {target}")
+            return json.dumps({"ok": True, "path": str(target)}, ensure_ascii=False)
+        except Exception as exc:  # noqa: BLE001
+            log(f"export_meeting 失败: {exc}")
+            return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
 
     def quit(self) -> None:
         if WINDOW:
