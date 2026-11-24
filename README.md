@@ -39,7 +39,7 @@
 
 ## 快速开始
 
-> **不想装 Python？** 到 [Releases](https://github.com/xwmy13141314/recording-transcript-workbench/releases) 下载 `recording-workbench-v1.0.0-win64.exe`（约 31 MB，免安装）。
+> **不想装 Python？** 到 [Releases](https://github.com/xwmy13141314/recording-transcript-workbench/releases) 下载最新版 `recording-workbench-v1.1.0-win64.exe`（约 31 MB，免安装）。
 > 仍需先按下面的「2. 下载模型」准备 `模型\` 目录，并把 exe 放在项目根目录与 `会议记录\`、`模型\` 同级。
 
 ### 1. 环境要求
