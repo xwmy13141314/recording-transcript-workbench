@@ -293,6 +293,10 @@ function parseSummary(md){
   out.lead=lead||'';
   return out;
 }
+function mdInline(text){
+  // 先转义再处理 **加粗**，避免 XSS；逐字稿时间戳另由 marked 处理
+  return esc(text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+}
 function renderSummaryMd(m){
   const p=parseSummary(m.summary_content);
   if(!p.sections.length) return '<div class="st">本机总结文件为空，暂用逐字稿开头。</div>';
@@ -303,7 +307,8 @@ function renderSummaryMd(m){
       const text = b.t!==undefined ? b.t : b.p;
       const mm=text.match(/^\[(\d\d:\d\d:\d\d)\]\s*(.*)$/);
       if(mm) return `<div class="pt"><span class="ts">${mm[1]}</span>${marked(mm[2],terms)}</div>`;
-      return `<div class="pt${b.t!==undefined?'':' lead-pt'}">${marked(text,terms)}</div>`;
+      const body=text.includes('**')?mdInline(text):marked(text,terms);
+      return `<div class="pt${b.t!==undefined?'':' lead-pt'}">${body}</div>`;
     });
     const body = parts.length ? parts.join('') : '<div class="st">(无)</div>';
     return `<div class="card"><h5>${esc(title)}</h5>${body}</div>`;
