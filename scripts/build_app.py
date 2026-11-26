@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from config import DATA, INDEX
 from settings import load_settings, public_settings, scan_recordings
@@ -187,7 +188,7 @@ function applyAppearance(){
   document.documentElement.style.setProperty('--scale', Number(sc)||1);
 }
 
-function groupByDate(list){ const g={}; list.forEach(m=>{ (g[m.date]=g[m.date]||[]).push(m); }); return g; }
+function groupByDate(list){ const g={}; list.forEach(m=>{ const d=m.record_date||m.date; (g[d]=g[d]||[]).push(m); }); return g; }
 function dayLabel(d){
   const today=new Date(), y=new Date(today); y.setDate(y.getDate()-1);
   const f=x=>x.toISOString().slice(0,10);
@@ -205,7 +206,7 @@ function renderList(){
   const keys = Object.keys(g).sort().reverse();
   $('meetingList').innerHTML = keys.length ? keys.map(k=>
     `<div class="grp">${esc(dayLabel(k))}</div>` + g[k].map(m=>
-      `<div class="mi ${current&&current.id===m.id?'on':''}" data-id="${esc(m.id)}"><span>${stars[m.id]?'★ ':''}${esc(m.title)}</span><span class="sub">${esc(m.time||'')}</span></div>`
+      `<div class="mi ${current&&current.id===m.id?'on':''}" data-id="${esc(m.id)}"><span>${stars[m.id]?'★ ':''}${esc(m.title)}</span><span class="sub">${fmt(m.duration)}</span></div>`
     ).join('')).join('') : '<div class="empty">没有匹配的会议</div>';
   document.querySelectorAll('.mi').forEach(el=>el.onclick=()=>openMeeting(el.dataset.id));
 }
@@ -277,7 +278,7 @@ function renderCenter(){
   const lead = terms.length ? (segs.find(s=>terms.every(t=>s.text.toLowerCase().includes(t.toLowerCase())))||{}).text||segs[0]?.text||'' : segs[0]?.text||'';
   $('center').innerHTML = `${wb}
     <div class="h1">${esc(m.title)}</div>
-    <div class="meta-line">${esc(m.date)} ${esc(m.time||'')} · ${fmt(m.duration)} · 本机转写</div>
+    <div class="meta-line">录音于 ${esc(m.record_date||m.date)} · 时长 ${fmt(m.duration)} · 本机转写</div>
     <div class="tabs" id="tabs"><span class="on" data-tab="summary">会议总结</span><span data-tab="transcript">逐字稿</span><span data-tab="audio">原音</span>
       <span class="export-wrap"><button class="btn" id="exportBtn">导出 ▾</button><div class="export-menu" id="exportMenu">
         <div data-kind="summary">⬇ 下载会议总结 (.md)</div>
@@ -359,8 +360,9 @@ function renderRight(){
   const m=current, segs=m.segments||[];
   const hits = terms.length ? segs.map((s,i)=>({s,i})).filter(o=>terms.every(t=>o.s.text.toLowerCase().includes(t.toLowerCase()))) : [];
   let html = `<div class="st">会议信息</div>
-    <div class="kv"><span>日期</span><span>${esc(m.date)}</span></div>
+    <div class="kv"><span>录音日期</span><span>${esc(m.record_date||m.date)}</span></div>
     <div class="kv"><span>时长</span><span>${fmt(m.duration)}</span></div>
+    <div class="kv"><span>导入时间</span><span>${esc(m.date)} ${esc(m.time||'')}</span></div>
     <div class="kv"><span>段落</span><span>${segs.length}</span></div>
     <div class="kv"><span>转写</span><span>本机</span></div>`;
   if(terms.length){
@@ -554,11 +556,24 @@ if(settings.auto_scan && window.pywebview && window.pywebview.api){
 """
 
 
+_RECORD_DATE_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
+
+
+def _record_date(m: dict) -> str:
+    """从标题（手机录音文件名）解析录音日期；解析不到则回退到 date（导入日）。"""
+    hit = _RECORD_DATE_RE.search(str(m.get("title") or ""))
+    if hit:
+        y, mo, d = hit.groups()
+        return f"{y}-{int(mo):02d}-{int(d):02d}"
+    return str(m.get("date") or "")
+
+
 def build_payload() -> dict:
     idx = json.loads(INDEX.read_text(encoding="utf-8")) if INDEX.exists() else {"meetings": []}
     enriched = []
     for m in idx.get("meetings", []):
         item = dict(m)
+        item["record_date"] = _record_date(m)
         for key in ("transcript", "summary"):
             p = DATA / m.get(key, "")
             item[key + "_content"] = p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
