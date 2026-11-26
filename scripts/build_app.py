@@ -51,8 +51,7 @@ APP_TEMPLATE = r"""<!DOCTYPE html>
   .tags { display:flex; gap:0.4rem; margin:0.7rem 0; }
   .tags span { font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:1rem; color:var(--muted); cursor:pointer; }
   .tags span.on { background:var(--accent-soft); color:var(--accent); }
-  .tags .cnt { margin-left:auto; font-size:0.72rem; color:var(--muted); white-space:nowrap; align-self:center; cursor:default; }
-  .tags .cnt b { color:var(--accent); font-weight:600; }
+  .tags .cnt { margin-left:auto; font-size:0.7rem; color:var(--muted); white-space:nowrap; align-self:center; cursor:default; padding-right:0.5rem; letter-spacing:0.05rem; }
   .grp { font-size:0.75rem; color:var(--muted); margin:0.8rem 0 0.35rem; padding-left:0.2rem; }
   .grp-toggle { display:flex; align-items:center; gap:0.3rem; cursor:pointer; padding:0.3rem 0.35rem; border-radius:0.35rem; user-select:none; }
   .grp-toggle:hover { background:var(--hover); color:var(--text); }
@@ -166,7 +165,7 @@ APP_TEMPLATE = r"""<!DOCTYPE html>
   <div class="layout">
     <aside class="col left">
       <input class="search" id="search" placeholder="搜索会议、逐字稿、总结…">
-      <div class="tags" id="navTags"><span class="on" data-nav="all">全部会议</span><span data-nav="star">星标</span><span class="cnt" id="meetCount"></span></div>
+      <div class="tags" id="navTags"><span class="on" data-nav="all">全部会议</span><span data-nav="star">星标</span><span class="cnt">场次</span></div>
       <div id="meetingList"></div>
       <div class="leftgear" id="settingsBtn">⚙ 设置</div>
     </aside>
@@ -232,8 +231,6 @@ function renderList(){
     const all = m.title+' '+(m.segments||[]).map(s=>s.text).join(' ')+' '+(m.summary_content||'');
     return terms.every(t=>all.toLowerCase().includes(t.toLowerCase()));
   });
-  const cntEl=$('meetCount');
-  if(cntEl) cntEl.innerHTML = `共 <b>${list.length}</b> 场`;
   const g = groupByDate(list);
   const keys = Object.keys(g).sort().reverse();
   if(openDates===null){
