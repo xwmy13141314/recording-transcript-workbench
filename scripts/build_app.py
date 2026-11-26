@@ -52,6 +52,12 @@ APP_TEMPLATE = r"""<!DOCTYPE html>
   .tags span { font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:1rem; color:var(--muted); cursor:pointer; }
   .tags span.on { background:var(--accent-soft); color:var(--accent); }
   .grp { font-size:0.75rem; color:var(--muted); margin:0.8rem 0 0.35rem; padding-left:0.2rem; }
+  .grp-toggle { display:flex; align-items:center; gap:0.3rem; cursor:pointer; padding:0.3rem 0.35rem; border-radius:0.35rem; user-select:none; }
+  .grp-toggle:hover { background:var(--hover); color:var(--text); }
+  .grp-toggle .caret { display:inline-block; width:0.7rem; font-size:0.7rem; color:var(--muted); }
+  .grp-toggle .grp-n { margin-left:auto; font-size:0.68rem; color:var(--muted); background:var(--panel); border:1px solid var(--border); border-radius:0.6rem; padding:0 0.35rem; min-width:1.1rem; text-align:center; }
+  .grp-toggle.open { color:var(--text); }
+  .grp-toggle.open .grp-n { background:var(--accent-soft); color:var(--accent); border-color:transparent; }
   .mi { padding:0.5rem 0.6rem; border-radius:0.5rem; cursor:pointer; margin-bottom:0.15rem; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; }
   .mi:hover { background:var(--hover); }
   .mi.on { background:var(--accent-soft); }
@@ -192,6 +198,7 @@ let scanInfo = INIT.scan||{new:[],new_count:0,dir:'',last_scan:''};
 let meetings = DB.meetings;
 let current = null, terms = [], navMode = 'all', modalTab = 'record', draft = null, processing = false;
 let calMonth = null, calDay = '';   // 录音日历：当前显示月份与选中日期
+let openDates = null;               // 左栏展开的日期集合（null=尚未初始化）
 let stars = {}; try{ stars = JSON.parse(localStorage.getItem('luyinka_stars')||'{}'); }catch(e){}
 const $ = id => document.getElementById(id);
 const api = (name, ...args) => (window.pywebview && window.pywebview.api && window.pywebview.api[name])
@@ -225,10 +232,23 @@ function renderList(){
   });
   const g = groupByDate(list);
   const keys = Object.keys(g).sort().reverse();
-  $('meetingList').innerHTML = keys.length ? keys.map(k=>
-    `<div class="grp">${esc(dayLabel(k))}</div>` + g[k].map(m=>
-      `<div class="mi ${current&&current.id===m.id?'on':''}" data-id="${esc(m.id)}"><span>${stars[m.id]?'★ ':''}${esc(m.title)}</span><span class="sub">${fmt(m.duration)}</span></div>`
-    ).join('')).join('') : '<div class="empty">没有匹配的会议</div>';
+  if(openDates===null){
+    openDates=new Set();
+    if(current) openDates.add(meetDate(current));   // 默认展开当前会议所在日期
+  }
+  if(terms.length) keys.forEach(k=>openDates.add(k)); // 搜索结果自动展开
+  $('meetingList').innerHTML = keys.length ? keys.map(k=>{
+    const open=openDates.has(k), arr=g[k];
+    return `<div class="grp grp-toggle ${open?'open':''}" data-date="${esc(k)}"><span class="caret">${open?'▾':'▸'}</span><span>${esc(dayLabel(k))}</span><span class="grp-n">${arr.length}</span></div>`+
+      (open?arr.map(m=>
+        `<div class="mi ${current&&current.id===m.id?'on':''}" data-id="${esc(m.id)}"><span>${stars[m.id]?'★ ':''}${esc(m.title)}</span><span class="sub">${fmt(m.duration)}</span></div>`
+      ).join(''):'');
+  }).join('') : '<div class="empty">没有匹配的会议</div>';
+  document.querySelectorAll('.grp-toggle').forEach(el=>el.onclick=()=>{
+    const d=el.dataset.date;
+    if(openDates.has(d)) openDates.delete(d); else openDates.add(d);
+    renderList();
+  });
   document.querySelectorAll('.mi').forEach(el=>el.onclick=()=>openMeeting(el.dataset.id));
 }
 
@@ -429,6 +449,7 @@ function bindCalendar(){
   const root=$('right'); if(!root) return;
   root.querySelectorAll('.cal-cell[data-date]').forEach(el=>el.onclick=()=>{
     calDay=(calDay===el.dataset.date)?'':el.dataset.date;
+    if(calDay && openDates){ openDates.add(calDay); renderList(); }  // 联动展开左栏
     renderRight();
   });
   const prev=root.querySelector('.cal-prev'), next=root.querySelector('.cal-next');
