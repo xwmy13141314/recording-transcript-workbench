@@ -116,6 +116,26 @@ APP_TEMPLATE = r"""<!DOCTYPE html>
   .modal-foot { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.2rem; }
   .prog { height:0.4rem; background:var(--hover); border-radius:0.2rem; overflow:hidden; margin-top:0.5rem; }
   .prog i { display:block; height:100%; background:var(--accent); }
+  .cal { margin-top:0.4rem; }
+  .cal-head { display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; margin-bottom:0.45rem; }
+  .cal-head b { font-weight:600; }
+  .cal-prev,.cal-next { cursor:pointer; width:1.4rem; height:1.4rem; display:inline-flex; align-items:center; justify-content:center; border-radius:0.3rem; font-size:1.1rem; color:var(--muted); }
+  .cal-prev:hover,.cal-next:hover { background:var(--hover); color:var(--text); }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:0.1rem; }
+  .cal-grid i { font-style:normal; text-align:center; }
+  .cal-dow { font-size:0.68rem; color:var(--muted); margin-bottom:0.2rem; }
+  .cal-cell { position:relative; height:1.7rem; line-height:1.7rem; font-size:0.76rem; border-radius:0.35rem; cursor:default; }
+  .cal-cell.has { cursor:pointer; color:var(--accent); font-weight:600; }
+  .cal-cell.has:hover { background:var(--hover); }
+  .cal-cell.has::after { content:''; position:absolute; bottom:0.16rem; left:50%; transform:translateX(-50%); width:0.22rem; height:0.22rem; border-radius:50%; background:var(--accent); }
+  .cal-cell.today { border:1px solid var(--border); }
+  .cal-cell.sel { background:var(--accent); color:#fff; }
+  .cal-cell.sel::after { background:#fff; }
+  .cal-daytitle { font-size:0.74rem; color:var(--muted); margin:0.7rem 0 0.3rem; padding-bottom:0.3rem; border-bottom:1px solid var(--border); }
+  .cal-item { display:flex; justify-content:space-between; gap:0.4rem; align-items:center; font-size:0.75rem; padding:0.35rem 0.4rem; border-radius:0.35rem; cursor:pointer; }
+  .cal-item:hover { background:var(--hover); }
+  .cal-item.on { background:var(--accent-soft); }
+  .cal-item .st { white-space:nowrap; font-family:ui-monospace,Consolas,monospace; }
   .export-wrap { position:relative; margin-left:auto; }
   .export-menu { position:absolute; right:0; top:1.9rem; z-index:15; background:var(--panel); border:1px solid var(--border); border-radius:0.5rem; box-shadow:0 6px 24px rgba(0,0,0,.14); padding:0.3rem; min-width:11rem; display:none; }
   .export-menu.on { display:block; }
@@ -171,6 +191,7 @@ let settings = Object.assign({record_dir:'',auto_scan:true,scan_interval:5,on_ne
 let scanInfo = INIT.scan||{new:[],new_count:0,dir:'',last_scan:''};
 let meetings = DB.meetings;
 let current = null, terms = [], navMode = 'all', modalTab = 'record', draft = null, processing = false;
+let calMonth = null, calDay = '';   // 录音日历：当前显示月份与选中日期
 let stars = {}; try{ stars = JSON.parse(localStorage.getItem('luyinka_stars')||'{}'); }catch(e){}
 const $ = id => document.getElementById(id);
 const api = (name, ...args) => (window.pywebview && window.pywebview.api && window.pywebview.api[name])
@@ -355,22 +376,85 @@ async function onCloudSummarize(){
   },500);
 }
 
+function meetDate(m){ return m.record_date||m.date||''; }
+
+// 按录音日期统计每天的会议
+function dateMap(){
+  const map={};
+  meetings.forEach(m=>{ const d=meetDate(m); if(d) (map[d]=map[d]||[]).push(m); });
+  return map;
+}
+
+function calendarHtml(){
+  const map=dateMap();
+  const days=Object.keys(map).sort();
+  if(!calMonth){
+    // 初始定位到当前会议所在月，否则最新录音月
+    const base=(current&&meetDate(current))||days[days.length-1]||'';
+    calMonth=base?{y:+base.slice(0,4), m:+base.slice(5,7)-1}:{y:new Date().getFullYear(), m:new Date().getMonth()};
+  }
+  const y=calMonth.y, mo=calMonth.m;
+  const first=new Date(y,mo,1), start=(first.getDay()+6)%7, total=new Date(y,mo+1,0).getDate();
+  const pad=n=>String(n).padStart(2,'0');
+  let cells='';
+  for(let i=0;i<start;i++) cells+='<i class="cal-cell pad"></i>';
+  for(let d=1;d<=total;d++){
+    const key=`${y}-${pad(mo+1)}-${pad(d)}`;
+    const n=(map[key]||[]).length;
+    const cls=['cal-cell'];
+    if(n) cls.push('has');
+    if(key===calDay) cls.push('sel');
+    const today=new Date(); if(y===today.getFullYear()&&mo===today.getMonth()&&d===today.getDate()) cls.push('today');
+    cells+=`<i class="${cls.join(' ')}" data-date="${key}" ${n?`title="${n} 场录音"`:''}>${d}</i>`;
+  }
+  const monthLabel=`${y} 年 ${mo+1} 月`;
+  let dayList='';
+  if(calDay){
+    const list=map[calDay]||[];
+    dayList=`<div class="cal-daytitle">${esc(calDay)} · ${list.length} 场</div>`+
+      (list.length?list.map(m=>`<div class="cal-item ${current&&current.id===m.id?'on':''}" data-id="${esc(m.id)}"><span>${esc(m.title)}</span><span class="st">${fmt(m.duration)}</span></div>`).join(''):'<div class="st">这天没有录音</div>');
+  } else {
+    dayList='<div class="st">点有标记的日期查看当天录音</div>';
+  }
+  return `<div class="st" style="margin-top:1rem">录音日历</div>
+    <div class="cal">
+      <div class="cal-head"><span class="cal-prev" title="上个月">‹</span><b>${monthLabel}</b><span class="cal-next" title="下个月">›</span></div>
+      <div class="cal-grid cal-dow"><i>一</i><i>二</i><i>三</i><i>四</i><i>五</i><i>六</i><i>日</i></div>
+      <div class="cal-grid">${cells}</div>
+    </div>
+    ${dayList}`;
+}
+
+function bindCalendar(){
+  const root=$('right'); if(!root) return;
+  root.querySelectorAll('.cal-cell[data-date]').forEach(el=>el.onclick=()=>{
+    calDay=(calDay===el.dataset.date)?'':el.dataset.date;
+    renderRight();
+  });
+  const prev=root.querySelector('.cal-prev'), next=root.querySelector('.cal-next');
+  if(prev) prev.onclick=()=>{ calMonth={y:calMonth.y,m:calMonth.m-1}; if(calMonth.m<0){calMonth.m=11;calMonth.y--;} calDay=''; renderRight(); };
+  if(next) next.onclick=()=>{ calMonth={y:calMonth.y,m:calMonth.m+1}; if(calMonth.m>11){calMonth.m=0;calMonth.y++;} calDay=''; renderRight(); };
+  root.querySelectorAll('.cal-item').forEach(el=>el.onclick=()=>openMeeting(el.dataset.id));
+}
+
 function renderRight(){
-  if(!current){ $('right').innerHTML='<div class="st">会议信息</div><div class="empty">未选择会议</div>'; return; }
+  if(!current){
+    $('right').innerHTML='<div class="st">会议信息</div><div class="empty">未选择会议</div>'+calendarHtml();
+    bindCalendar(); return;
+  }
   const m=current, segs=m.segments||[];
   const hits = terms.length ? segs.map((s,i)=>({s,i})).filter(o=>terms.every(t=>o.s.text.toLowerCase().includes(t.toLowerCase()))) : [];
   let html = `<div class="st">会议信息</div>
     <div class="kv"><span>录音日期</span><span>${esc(m.record_date||m.date)}</span></div>
     <div class="kv"><span>时长</span><span>${fmt(m.duration)}</span></div>
-    <div class="kv"><span>导入时间</span><span>${esc(m.date)} ${esc(m.time||'')}</span></div>
     <div class="kv"><span>段落</span><span>${segs.length}</span></div>
     <div class="kv"><span>转写</span><span>本机</span></div>`;
   if(terms.length){
     html += `<div class="st" style="margin-top:1rem">命中 ${hits.length} 处</div>`;
     html += hits.slice(0,8).map(o=>`<div class="tlrow" data-i="${o.i}"><span class="ts">${fmt(o.s.start)}</span><span>${marked(o.s.text,terms)}</span></div>`).join('')||'<div class="st">当前会议无命中</div>';
   }
-  html += `<div class="st" style="margin-top:1rem">时间轴</div>${timelineHtml(segs)}`;
-  $('right').innerHTML = html; bindTimeline();
+  html += calendarHtml();
+  $('right').innerHTML = html; bindTimeline(); bindCalendar();
 }
 
 function audioSrc(m){
